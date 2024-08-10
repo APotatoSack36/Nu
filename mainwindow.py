@@ -35,6 +35,9 @@ class SketchWindow(QMainWindow):
         self.delta_x = 0
         self.delta_y = 0
 
+        self.delta_xa = [0]*21
+        self.delta_ya = [0]*21
+
         self.global_point = Point(self.maincanvas)
         self.global_point.draw()
 
@@ -65,6 +68,9 @@ class SketchWindow(QMainWindow):
             self.transform((mouse_read[0] - last_relative_mouse_pos[0]), (mouse_read[1] - last_relative_mouse_pos[1]))
             self.delta_x += (mouse_read[0] - last_relative_mouse_pos[0])
             self.delta_y += (mouse_read[1] - last_relative_mouse_pos[1])
+            self.delta_xa[self.total_str] = self.delta_x
+            self.delta_ya[self.total_str] = self.delta_y
+            print(self.delta_xa)
 
 
     def mousePressEvent(self, event : QMouseEvent):
@@ -107,11 +113,9 @@ class SketchWindow(QMainWindow):
                 self.total_str -= 1
                 self.scale(self.relative_mouse_pos())
 
-            print(self.total_str)
-
     def instatiate_point(self, point=[0,0]):
         pointArray.append(Point(self.maincanvas))
-        pointArray[self.point_index].coordinates = [(point[0] - self.delta_x)/self.zoom_str**(self.total_str), (point[1] - self.delta_y)/self.zoom_str**(self.total_str), int(point[0]) -  self.delta_x, int(point[1]) - self.delta_y, point[0], point[1], int(point[0]), int(point[1])]
+        pointArray[self.point_index].coordinates = [point[0] - self.delta_x, point[1] - self.delta_y, int(point[0]) -  self.delta_x, int(point[1]) - self.delta_y, point[0], point[1], int(point[0]), int(point[1])]
         pointArray[self.point_index].draw()
         self.point_index += 1
 
