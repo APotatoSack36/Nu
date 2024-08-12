@@ -35,9 +35,6 @@ class SketchWindow(QMainWindow):
         self.delta_x = 0
         self.delta_y = 0
 
-        self.delta_xa = [0]*21
-        self.delta_ya = [0]*21
-
         self.global_point = Point(self.maincanvas)
         self.global_point.draw()
 
@@ -68,9 +65,6 @@ class SketchWindow(QMainWindow):
             self.transform((mouse_read[0] - last_relative_mouse_pos[0]), (mouse_read[1] - last_relative_mouse_pos[1]))
             self.delta_x += (mouse_read[0] - last_relative_mouse_pos[0])
             self.delta_y += (mouse_read[1] - last_relative_mouse_pos[1])
-            self.delta_xa[self.total_str] = self.delta_x
-            self.delta_ya[self.total_str] = self.delta_y
-            print(self.delta_xa)
 
 
     def mousePressEvent(self, event : QMouseEvent):
@@ -104,14 +98,15 @@ class SketchWindow(QMainWindow):
         return(relativeMouseX, relativeMouseY)
 
     def wheelEvent(self, event: QWheelEvent):
-            if event.angleDelta().y() > 0  and self.total_str < 20: #Zoom in
-                self.zoom_str = 1/self.scaling_fac
+            if event.angleDelta().y() > 0: #Zoom in
                 self.total_str += 1
-                self.scale(self.relative_mouse_pos())
-            if event.angleDelta().y() < 0 and self.total_str > -20: #Zoom out
-                self.zoom_str = self.scaling_fac
+                self.scale(1.25)
+
+            if event.angleDelta().y() < 0: #Zoom out
                 self.total_str -= 1
-                self.scale(self.relative_mouse_pos())
+                self.scale(1/1.25)
+            
+            #print("real: ", 10 * self.total_str, "Estimate: ", 10 * 1.25**self.pee, "Error: ", (10 * self.total_str) - (10 * 1.25**self.pee))
 
     def instatiate_point(self, point=[0,0]):
         pointArray.append(Point(self.maincanvas))
@@ -135,19 +130,25 @@ class SketchWindow(QMainWindow):
         lineArray[self.line_index].draw()
         self.line_index += 1
 
-    def scale(self, point=[0,0]):
+    def scale(self, scalar):
         self.maincanvas.canvas.fill(Qt.GlobalColor.black)
+        
+        wah = self.relative_mouse_pos()
+        self.global_point.coordinates[4] = (self.global_point.coordinates[4] - wah[0])*scalar + wah[0]
+        self.global_point.coordinates[5] = (self.global_point.coordinates[5] - wah[1])*scalar + wah[1]
+        self.global_point.coordinates[6] = int(self.global_point.coordinates[4])
+        self.global_point.coordinates[7] = int(self.global_point.coordinates[5])
 
         for v in range(0, len(pointArray)):
-            pointArray[v].coordinates[4] = ((pointArray[v].coordinates[4] - point[0])/self.zoom_str) + point[0]
-            pointArray[v].coordinates[5] = ((pointArray[v].coordinates[5] - point[1])/self.zoom_str) + point[1]
+            pointArray[v].coordinates[4] = ((pointArray[v].coordinates[0] - self.global_point.coordinates[0]) * 1.25**self.total_str) + self.global_point.coordinates[4]
+            pointArray[v].coordinates[5] = ((pointArray[v].coordinates[1] - self.global_point.coordinates[1]) * 1.25**self.total_str) + self.global_point.coordinates[5]
             pointArray[v].coordinates[6] = int(pointArray[v].coordinates[4])
             pointArray[v].coordinates[7] = int(pointArray[v].coordinates[5])
             pointArray[v].draw()
 
         for p in range(0, len(linePointArray)):
-            linePointArray[p].coordinates[4] = ((linePointArray[p].coordinates[4] - point[0])/self.zoom_str) + point[0]
-            linePointArray[p].coordinates[5] = ((linePointArray[p].coordinates[5] - point[1])/self.zoom_str) + point[1]
+            linePointArray[p].coordinates[4] = ((linePointArray[p].coordinates[0] - self.global_point.coordinates[0]) * 1.25**self.total_str) + self.global_point.coordinates[4]
+            linePointArray[p].coordinates[5] = ((linePointArray[p].coordinates[1] - self.global_point.coordinates[1]) * 1.25**self.total_str) + self.global_point.coordinates[5]
             linePointArray[p].coordinates[6] = int(linePointArray[p].coordinates[4])
             linePointArray[p].coordinates[7] = int(linePointArray[p].coordinates[5])
             linePointArray[p].draw()
@@ -163,11 +164,9 @@ class SketchWindow(QMainWindow):
             lineArray[g].coordinates[15] = linePointArray[(g* 2) + 1].coordinates[7]
             lineArray[g].draw()
 
-        self.global_point.coordinates[4] = ((self.global_point.coordinates[4] - point[0])/self.zoom_str) + point[0]
-        self.global_point.coordinates[5] = ((self.global_point.coordinates[5] - point[1])/self.zoom_str) + point[1]
-        self.global_point.coordinates[6] = int(self.global_point.coordinates[4])
-        self.global_point.coordinates[7] = int(self.global_point.coordinates[5])
         self.global_point.draw()
+
+
 
     def transform(self, xspeed, yspeed):
         self.maincanvas.canvas.fill(Qt.GlobalColor.black)
