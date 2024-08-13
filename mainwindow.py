@@ -17,7 +17,6 @@ class SketchWindow(QMainWindow):
     def __init__(self, app):
         super().__init__()
         self.maincanvas = MainCanvas()
-        self.maincanvas.canvas.fill(Qt.GlobalColor.black)
 
         self.setCentralWidget(self.maincanvas.label)
         self.tool = "line"
@@ -32,11 +31,9 @@ class SketchWindow(QMainWindow):
         self.zoom_str = 0
         self.total_str = 0
 
-        self.delta_x = 0
-        self.delta_y = 0
-
         self.global_point = Point(self.maincanvas)
         self.global_point.draw()
+        self.drawFrame()
 
         self.app = app
         self.setWindowTitle("CAD")
@@ -63,8 +60,6 @@ class SketchWindow(QMainWindow):
         mouse_read = self.relative_mouse_pos()
         if self.mode == "pan":
             self.transform((mouse_read[0] - last_relative_mouse_pos[0]), (mouse_read[1] - last_relative_mouse_pos[1]))
-            self.delta_x += (mouse_read[0] - last_relative_mouse_pos[0])
-            self.delta_y += (mouse_read[1] - last_relative_mouse_pos[1])
 
 
     def mousePressEvent(self, event : QMouseEvent):
@@ -106,17 +101,15 @@ class SketchWindow(QMainWindow):
                 self.total_str -= 1
                 self.scale(1/1.25)
             
-            #print("real: ", 10 * self.total_str, "Estimate: ", 10 * 1.25**self.pee, "Error: ", (10 * self.total_str) - (10 * 1.25**self.pee))
-
     def instatiate_point(self, point=[0,0]):
         pointArray.append(Point(self.maincanvas))
-        pointArray[self.point_index].coordinates = [point[0] - self.delta_x, point[1] - self.delta_y, int(point[0]) -  self.delta_x, int(point[1]) - self.delta_y, point[0], point[1], int(point[0]), int(point[1])]
+        pointArray[self.point_index].coordinates = [((point[0] - self.global_point.coordinates[4])/1.25**self.total_str) + self.global_point.coordinates[0], ((point[1] - self.global_point.coordinates[5])/1.25**self.total_str) + self.global_point.coordinates[1], int(((point[0] - self.global_point.coordinates[4])/1.25**self.total_str) + self.global_point.coordinates[0]), int(((point[1] - self.global_point.coordinates[5])/1.25**self.total_str) + self.global_point.coordinates[1]), int(((point[1] - self.global_point.coordinates[5])/1.25**self.total_str) + self.global_point.coordinates[1]), point[0], point[1], int(point[0]), int(point[1])]
         pointArray[self.point_index].draw()
         self.point_index += 1
 
     def instatiate_line_point(self, point=[0,0]):
         linePointArray.append(Point(self.maincanvas))
-        linePointArray[self.line_point_index].coordinates = [point[0] - self.delta_x, point[1] - self.delta_y, int(point[0] - self.delta_x), int(point[1] - self.delta_y), point[0], point[1], int(point[0]), int(point[1])]
+        linePointArray[self.line_point_index].coordinates = [((point[0] - self.global_point.coordinates[4])/1.25**self.total_str) + self.global_point.coordinates[0], ((point[1] - self.global_point.coordinates[5])/1.25**self.total_str) + self.global_point.coordinates[1], int(((point[0] - self.global_point.coordinates[4])/1.25**self.total_str) + self.global_point.coordinates[0]), int(((point[1] - self.global_point.coordinates[5])/1.25**self.total_str) + self.global_point.coordinates[1]), point[0], point[1], int(point[0]), int(point[1])]
         linePointArray[self.line_point_index].draw()
         self.line_point_index += 1
 
@@ -131,7 +124,7 @@ class SketchWindow(QMainWindow):
         self.line_index += 1
 
     def scale(self, scalar):
-        self.maincanvas.canvas.fill(Qt.GlobalColor.black)
+        self.drawFrame()
         
         wah = self.relative_mouse_pos()
         self.global_point.coordinates[4] = (self.global_point.coordinates[4] - wah[0])*scalar + wah[0]
@@ -167,9 +160,8 @@ class SketchWindow(QMainWindow):
         self.global_point.draw()
 
 
-
     def transform(self, xspeed, yspeed):
-        self.maincanvas.canvas.fill(Qt.GlobalColor.black)
+        self.drawFrame()
  
         for k in range(0, len(pointArray)):
             pointArray[k].coordinates[4] += xspeed
@@ -201,3 +193,15 @@ class SketchWindow(QMainWindow):
         self.global_point.coordinates[6] += xspeed
         self.global_point.coordinates[7] += yspeed
         self.global_point.draw()
+
+
+    def drawFrame(self):
+        self.maincanvas.canvas.fill(Qt.GlobalColor.black)
+        self.painter = QPainter(self.maincanvas.canvas)
+        self.pen = QPen()
+        self.pen.setColor(Qt.GlobalColor.darkGray)
+        self.painter.setPen(self.pen)
+        self.painter.drawLine(self.global_point.coordinates[6], 0, self.global_point.coordinates[6], 800)
+        self.painter.drawLine(0, self.global_point.coordinates[7], 1000, self.global_point.coordinates[7])
+        self.painter.end()
+        self.maincanvas.label.setPixmap(self.maincanvas.canvas)
