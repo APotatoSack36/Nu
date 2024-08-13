@@ -196,7 +196,7 @@ class SketchWindow(QMainWindow):
 
 
     def drawFrame(self):
-        self.maincanvas.canvas.fill(Qt.GlobalColor.black)
+        self.maincanvas.canvas.fill(Qt.GlobalColor.white)
         self.painter = QPainter(self.maincanvas.canvas)
         self.pen = QPen()
         self.pen.setColor(Qt.GlobalColor.darkGray)

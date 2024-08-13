@@ -52,3 +52,21 @@ class Point(SketchEntity):
 
         self.painter.end()
         self.maincanvas.label.setPixmap(self.maincanvas.canvas)
+
+class ThreePointArc(SketchEntity): #TBD
+    def __init__(self, canvas):
+        super().__init__(canvas)
+        self.coordinates = [0, 0, 0, 0, 0, 0, #Basic
+                            0, 0, 0, 0, 0, 0, #Basic Rounded
+                            0, 0, 0, 0, 0, 0, #Transformed
+                            0, 0, 0, 0, 0, 0] #Transformed rounded
+    
+    def draw(self):
+        self.painter = QPainter(self.maincanvas.canvas)
+        self.pen = QPen()
+
+        self.pen.setColor(Qt.GlobalColor.lightGray)
+        self.painter.setPen(self.pen)
+
+        self.painter.end()
+        self.maincanvas.label.setPixmap(self.maincanvas.canvas)
