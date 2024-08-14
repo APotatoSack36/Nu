@@ -1,5 +1,6 @@
 from PyQt6.QtGui import QPainter, QPen, QColor
 from PyQt6.QtCore import Qt
+import math
 from maincanvas import * 
 
 class SketchEntity:
@@ -21,7 +22,7 @@ class Line(SketchEntity):
         #MAIN LINE
         self.pen.setColor(Qt.GlobalColor.red)
         self.painter.setPen(self.pen)
-        self.painter.drawLine(self.coordinates[4],self.coordinates[5], self.coordinates[6], self.coordinates[7])
+        self.painter.drawLine(self.coordinates[4], self.coordinates[5], self.coordinates[6], self.coordinates[7])
 
         self.pen.setColor(self.lightGreen)
         self.painter.setPen(self.pen)
@@ -60,6 +61,9 @@ class ThreePointArc(SketchEntity): #TBD
                             0, 0, 0, 0, 0, 0, #Basic Rounded
                             0, 0, 0, 0, 0, 0, #Transformed
                             0, 0, 0, 0, 0, 0] #Transformed rounded
+        self.radius = 50
+        self.angle = 0
+        self.subdivides = 5
     
     def draw(self):
         self.painter = QPainter(self.maincanvas.canvas)
@@ -67,6 +71,9 @@ class ThreePointArc(SketchEntity): #TBD
 
         self.pen.setColor(Qt.GlobalColor.lightGray)
         self.painter.setPen(self.pen)
+        
+        for q in range(9,  18 + self.subdivides * 2):
+            self.painter.drawLine(self.coordinates[q * 2], self.coordinates[q * 2], self.coordinates[(q * 2) + 1], self.coordinates[(q * 2) + 1])
 
         self.painter.end()
         self.maincanvas.label.setPixmap(self.maincanvas.canvas)

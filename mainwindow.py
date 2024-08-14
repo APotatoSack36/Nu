@@ -1,7 +1,6 @@
-from PyQt6.QtWidgets import QMainWindow, QLabel
+from PyQt6.QtWidgets import QMainWindow
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QCursor, QKeyEvent, QMouseEvent, QWheelEvent
-import numpy
 
 from maincanvas import MainCanvas
 from entities import *
