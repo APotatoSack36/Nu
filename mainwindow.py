@@ -7,10 +7,11 @@ from entities import *
 
 mouse_read = [0, 0]
 
-lineArray = []
 pointArray = []
 linePointArray = []
-
+lineArray = []
+arcPointArray = []
+arcArray = []
 
 class SketchWindow(QMainWindow):
     def __init__(self, app):
@@ -22,8 +23,10 @@ class SketchWindow(QMainWindow):
         self.mode = 0
 
         self.point_index = 0
-        self.line_index = 0
         self.line_point_index = 0
+        self.line_index = 0
+        self.arc_point_index = 0
+        self.arc_index = 0
         self.click_index = 0
 
         self.scaling_fac = 1.5
@@ -31,8 +34,17 @@ class SketchWindow(QMainWindow):
         self.total_str = 0
 
         self.global_point = Point(self.maincanvas)
-        self.global_point.draw()
+
+        self.pointGhost = Point(self.maincanvas)
+        self.linePointGhost = Point(self.maincanvas)
+        self.lineGhost = Line(self.maincanvas)
+        self.arcPointGhost = Point(self.maincanvas)
+        self.arcGhost = ThreePointArc(self.maincanvas)
+
         self.drawFrame()
+        self.global_point.draw()
+
+        print(pointArray, self.point_index)
 
         self.app = app
         self.setWindowTitle("CAD")
@@ -41,24 +53,55 @@ class SketchWindow(QMainWindow):
         self.maincanvas.label.setPixmap(self.maincanvas.canvas)
 
     def keyPressEvent(self, event : QKeyEvent):
-        if event.key() == 76:
+        print(self.arc_point_index)
+        if self.line_point_index % 2 != 0 and self.line_point_index > -1:
+            self.line_point_index -= 1
+            linePointArray.pop()
+
+        for n in range(3):
+            if self.arc_point_index % 3 != 0 and self.arc_point_index > -1:
+                self.arc_point_index -= 1
+                arcPointArray.pop()
+
+        self.click_index = 0
+
+        if event.key() == 76:   
             self.tool = "line"
         if event.key() == 80:
             self.tool = "point"
+        if event.key() == 65:
+            self.tool = "arc"
         if event.key() == 16777249:
             self.mode = "pan"
-
+        #print(event.key())
+        self.redrawEntities()
     def keyReleaseEvent(self, event : QKeyEvent):
         if event.key() == 16777249:
             self.mode = "NAN"
 
 
     def mouseMoveEvent(self, e):
+        self.drawFrame()
         global mouse_read
         last_relative_mouse_pos = mouse_read
         mouse_read = self.relative_mouse_pos()
         if self.mode == "pan":
             self.transform((mouse_read[0] - last_relative_mouse_pos[0]), (mouse_read[1] - last_relative_mouse_pos[1]))
+
+        match self.tool:
+            case "point":
+                self.pointGhost.draw_ghost(self.relative_mouse_pos())
+            case "line":
+                if self.click_index > 0:
+                    self.linePointGhost.draw_ghost(self.relative_mouse_pos())
+                    self.lineGhost.draw_ghost((linePointArray[self.line_index*2].coordinates[6], linePointArray[self.line_index*2].coordinates[7]), self.relative_mouse_pos())
+            case "arc":
+                if self.click_index > 1:
+                    self.arcPointGhost.draw_ghost(self.relative_mouse_pos())
+                    self.arcGhost.draw_ghost((arcPointArray[self.arc_index*3].coordinates[6], arcPointArray[self.arc_index*3].coordinates[7]), (arcPointArray[self.arc_index*3 + 1].coordinates[6], arcPointArray[self.arc_index*3 + 1].coordinates[7]), self.relative_mouse_pos())
+        
+        self.redrawEntities()
+
 
 
     def mousePressEvent(self, event : QMouseEvent):
@@ -71,6 +114,12 @@ class SketchWindow(QMainWindow):
                     self.click_index += 1
                     if self.click_index >= 2:
                         self.instatiate_line()
+                        self.click_index = 0
+                case "arc":
+                    self.instatiate_arc_point(self.relative_mouse_pos())
+                    self.click_index += 1
+                    if self.click_index >= 3:
+                        self.instatiate_arc()
                         self.click_index = 0
 
         if event.button() == Qt.MouseButton.MiddleButton:
@@ -102,13 +151,27 @@ class SketchWindow(QMainWindow):
             
     def instatiate_point(self, point=[0,0]):
         pointArray.append(Point(self.maincanvas))
-        pointArray[self.point_index].coordinates = [((point[0] - self.global_point.coordinates[4])/1.25**self.total_str) + self.global_point.coordinates[0], ((point[1] - self.global_point.coordinates[5])/1.25**self.total_str) + self.global_point.coordinates[1], int(((point[0] - self.global_point.coordinates[4])/1.25**self.total_str) + self.global_point.coordinates[0]), int(((point[1] - self.global_point.coordinates[5])/1.25**self.total_str) + self.global_point.coordinates[1]), int(((point[1] - self.global_point.coordinates[5])/1.25**self.total_str) + self.global_point.coordinates[1]), point[0], point[1], int(point[0]), int(point[1])]
+        pointArray[self.point_index].coordinates = [((point[0] - self.global_point.coordinates[4])/1.25**self.total_str) + self.global_point.coordinates[0], 
+                                                    ((point[1] - self.global_point.coordinates[5])/1.25**self.total_str) + self.global_point.coordinates[1], 
+                                                    int(((point[0] - self.global_point.coordinates[4])/1.25**self.total_str) + self.global_point.coordinates[0]), 
+                                                    int(((point[1] - self.global_point.coordinates[5])/1.25**self.total_str) + self.global_point.coordinates[1]), 
+                                                    point[0], 
+                                                    point[1], 
+                                                    int(point[0]), 
+                                                    int(point[1])]
         pointArray[self.point_index].draw()
         self.point_index += 1
 
     def instatiate_line_point(self, point=[0,0]):
         linePointArray.append(Point(self.maincanvas))
-        linePointArray[self.line_point_index].coordinates = [((point[0] - self.global_point.coordinates[4])/1.25**self.total_str) + self.global_point.coordinates[0], ((point[1] - self.global_point.coordinates[5])/1.25**self.total_str) + self.global_point.coordinates[1], int(((point[0] - self.global_point.coordinates[4])/1.25**self.total_str) + self.global_point.coordinates[0]), int(((point[1] - self.global_point.coordinates[5])/1.25**self.total_str) + self.global_point.coordinates[1]), point[0], point[1], int(point[0]), int(point[1])]
+        linePointArray[self.line_point_index].coordinates = [((point[0] - self.global_point.coordinates[4])/1.25**self.total_str) + self.global_point.coordinates[0], 
+                                                             ((point[1] - self.global_point.coordinates[5])/1.25**self.total_str) + self.global_point.coordinates[1], 
+                                                             int(((point[0] - self.global_point.coordinates[4])/1.25**self.total_str) + self.global_point.coordinates[0]), 
+                                                             int(((point[1] - self.global_point.coordinates[5])/1.25**self.total_str) + self.global_point.coordinates[1]), 
+                                                             point[0], 
+                                                             point[1], 
+                                                             int(point[0]), 
+                                                             int(point[1])]
         linePointArray[self.line_point_index].draw()
         self.line_point_index += 1
 
@@ -121,6 +184,31 @@ class SketchWindow(QMainWindow):
 
         lineArray[self.line_index].draw()
         self.line_index += 1
+
+    def instatiate_arc_point(self, point=[0,0]):
+        arcPointArray.append(Point(self.maincanvas))
+        arcPointArray[self.arc_point_index].coordinates = [((point[0] - self.global_point.coordinates[4])/1.25**self.total_str) + self.global_point.coordinates[0], 
+                                                             ((point[1] - self.global_point.coordinates[5])/1.25**self.total_str) + self.global_point.coordinates[1], 
+                                                             int(((point[0] - self.global_point.coordinates[4])/1.25**self.total_str) + self.global_point.coordinates[0]), 
+                                                             int(((point[1] - self.global_point.coordinates[5])/1.25**self.total_str) + self.global_point.coordinates[1]), 
+                                                             point[0], 
+                                                             point[1], 
+                                                             int(point[0]), 
+                                                             int(point[1])]
+        
+        arcPointArray[self.arc_point_index].draw()
+        self.arc_point_index += 1
+    
+    def instatiate_arc(self):
+        arcArray.append(ThreePointArc(self.maincanvas))
+        arcArray[self.arc_index].coordinates = [arcPointArray[self.arc_index*3].coordinates[0], arcPointArray[self.arc_index*3].coordinates[1], arcPointArray[self.arc_index*3 + 1].coordinates[0], arcPointArray[self.arc_index*3 + 1].coordinates[1], arcPointArray[self.arc_index*3 + 2].coordinates[0], arcPointArray[self.arc_index*3 + 2].coordinates[1],
+                                               arcPointArray[self.arc_index*3].coordinates[2], arcPointArray[self.arc_index*3].coordinates[3], arcPointArray[self.arc_index*3 + 1].coordinates[2], arcPointArray[self.arc_index*3 + 1].coordinates[3], arcPointArray[self.arc_index*3 + 2].coordinates[2], arcPointArray[self.arc_index*3 + 2].coordinates[3],
+                                               arcPointArray[self.arc_index*3].coordinates[4], arcPointArray[self.arc_index*3].coordinates[5], arcPointArray[self.arc_index*3 + 1].coordinates[4], arcPointArray[self.arc_index*3 + 1].coordinates[5], arcPointArray[self.arc_index*3 + 2].coordinates[4], arcPointArray[self.arc_index*3 + 2].coordinates[5],
+                                               arcPointArray[self.arc_index*3].coordinates[6], arcPointArray[self.arc_index*3].coordinates[7], arcPointArray[self.arc_index*3 + 1].coordinates[6], arcPointArray[self.arc_index*3 + 1].coordinates[7], arcPointArray[self.arc_index*3 + 2].coordinates[6], arcPointArray[self.arc_index*3 + 2].coordinates[7]    
+        ]
+        arcArray[self.arc_index].draw()
+        print(arcArray[self.arc_index].coordinates)
+        self.arc_index += 1
 
     def scale(self, scalar):
         self.drawFrame()
@@ -156,6 +244,29 @@ class SketchWindow(QMainWindow):
             lineArray[g].coordinates[15] = linePointArray[(g* 2) + 1].coordinates[7]
             lineArray[g].draw()
 
+        for f in range(0, len(arcPointArray)):
+            arcPointArray[f].coordinates[4] = ((arcPointArray[f].coordinates[0] - self.global_point.coordinates[0]) * 1.25**self.total_str) + self.global_point.coordinates[4]
+            arcPointArray[f].coordinates[5] = ((arcPointArray[f].coordinates[1] - self.global_point.coordinates[1]) * 1.25**self.total_str) + self.global_point.coordinates[5]
+            arcPointArray[f].coordinates[6] = int(arcPointArray[f].coordinates[4])
+            arcPointArray[f].coordinates[7] = int(arcPointArray[f].coordinates[5])
+            arcPointArray[f].draw()
+
+        for q in range(0, len(arcArray)):
+            arcArray[q].coordinates[12] = arcPointArray[(q*3)].coordinates[4]
+            arcArray[q].coordinates[13] = arcPointArray[(q*3)].coordinates[5]
+            arcArray[q].coordinates[14] = arcPointArray[(q*3) + 1].coordinates[4]
+            arcArray[q].coordinates[15] = arcPointArray[(q*3) + 1].coordinates[5]
+            arcArray[q].coordinates[16] = arcPointArray[(q*3) + 2].coordinates[4]
+            arcArray[q].coordinates[17] = arcPointArray[(q*3) + 2].coordinates[5]
+            arcArray[q].coordinates[18] = arcPointArray[(q*3)].coordinates[6]
+            arcArray[q].coordinates[19] = arcPointArray[(q*3)].coordinates[7]
+            arcArray[q].coordinates[20] = arcPointArray[(q*3) + 1].coordinates[6]
+            arcArray[q].coordinates[21] = arcPointArray[(q*3) + 1].coordinates[7]
+            arcArray[q].coordinates[22] = arcPointArray[(q*3) + 2].coordinates[6]
+            arcArray[q].coordinates[23] = arcPointArray[(q*3) + 2].coordinates[7]
+            arcArray[q].draw()
+
+
         self.global_point.draw()
 
 
@@ -187,10 +298,51 @@ class SketchWindow(QMainWindow):
             lineArray[b].coordinates[15] = linePointArray[(b* 2) + 1].coordinates[7]
             lineArray[b].draw()
 
+        for s in range(0, len(arcPointArray)):
+            arcPointArray[s].coordinates[4] += xspeed
+            arcPointArray[s].coordinates[5] += yspeed
+            arcPointArray[s].coordinates[6] += xspeed
+            arcPointArray[s].coordinates[7] += yspeed
+            arcPointArray[s].draw()
+
+        for d in range(0, len(arcArray)):
+            arcArray[d].coordinates[12] = arcPointArray[(d*3)].coordinates[4]
+            arcArray[d].coordinates[13] = arcPointArray[(d*3)].coordinates[5]
+            arcArray[d].coordinates[14] = arcPointArray[(d*3) + 1].coordinates[4]
+            arcArray[d].coordinates[15] = arcPointArray[(d*3) + 1].coordinates[5]
+            arcArray[d].coordinates[16] = arcPointArray[(d*3) + 2].coordinates[4]
+            arcArray[d].coordinates[17] = arcPointArray[(d*3) + 2].coordinates[5]
+            arcArray[d].coordinates[18] = arcPointArray[(d*3)].coordinates[6]
+            arcArray[d].coordinates[19] = arcPointArray[(d*3)].coordinates[7]
+            arcArray[d].coordinates[20] = arcPointArray[(d*3) + 1].coordinates[6]
+            arcArray[d].coordinates[21] = arcPointArray[(d*3) + 1].coordinates[7]
+            arcArray[d].coordinates[22] = arcPointArray[(d*3) + 2].coordinates[6]
+            arcArray[d].coordinates[23] = arcPointArray[(d*3) + 2].coordinates[7]
+            arcArray[d].draw()
+
         self.global_point.coordinates[4] += xspeed
         self.global_point.coordinates[5] += yspeed
         self.global_point.coordinates[6] += xspeed
         self.global_point.coordinates[7] += yspeed
+        self.global_point.draw()
+
+
+    def redrawEntities(self):
+        for k in range(0, len(pointArray)):
+            pointArray[k].draw()
+
+        for r in range(0, len(linePointArray)):
+            linePointArray[r].draw()
+
+        for b in range(0, len(lineArray)):
+            lineArray[b].draw()
+
+        for s in range(0, len(arcPointArray)):
+            arcPointArray[s].draw()
+
+        for d in range(0, len(arcArray)):
+            arcArray[d].draw()
+
         self.global_point.draw()
 
 
