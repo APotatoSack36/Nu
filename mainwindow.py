@@ -13,6 +13,9 @@ lineArray = []
 arcPointArray = []
 arcArray = []
 
+aArray = [[0, 0]]
+bArray = [[0, 0]]
+
 class SketchWindow(QMainWindow):
     def __init__(self, app):
         super().__init__()
@@ -34,6 +37,7 @@ class SketchWindow(QMainWindow):
         self.total_str = 0
 
         self.global_point = Point(self.maincanvas)
+        self.global_point.coordinates = [500, 400, 500, 400, 500, 400, 500, 400]
 
         self.pointGhost = Point(self.maincanvas)
         self.linePointGhost = Point(self.maincanvas)
@@ -42,9 +46,9 @@ class SketchWindow(QMainWindow):
         self.arcGhost = ThreePointArc(self.maincanvas)
 
         self.drawFrame()
-        self.global_point.draw()
+        self.global_point.draw(Qt.GlobalColor.lightGray)
 
-        print(pointArray, self.point_index)
+        #print(pointArray, self.point_index)
 
         self.app = app
         self.setWindowTitle("CAD")
@@ -53,7 +57,7 @@ class SketchWindow(QMainWindow):
         self.maincanvas.label.setPixmap(self.maincanvas.canvas)
 
     def keyPressEvent(self, event : QKeyEvent):
-        print(self.arc_point_index)
+        #print(self.arc_point_index)
         if self.line_point_index % 2 != 0 and self.line_point_index > -1:
             self.line_point_index -= 1
             linePointArray.pop()
@@ -71,10 +75,16 @@ class SketchWindow(QMainWindow):
             self.tool = "point"
         if event.key() == 65:
             self.tool = "arc"
+        if event.key() == 16777216:
+            self.tool = "NAN"
         if event.key() == 16777249:
             self.mode = "pan"
-        #print(event.key())
+
+        print(event.key())
         self.redrawEntities()
+
+        self.ghostEvent()
+
     def keyReleaseEvent(self, event : QKeyEvent):
         if event.key() == 16777249:
             self.mode = "NAN"
@@ -88,19 +98,10 @@ class SketchWindow(QMainWindow):
         if self.mode == "pan":
             self.transform((mouse_read[0] - last_relative_mouse_pos[0]), (mouse_read[1] - last_relative_mouse_pos[1]))
 
-        match self.tool:
-            case "point":
-                self.pointGhost.draw_ghost(self.relative_mouse_pos())
-            case "line":
-                if self.click_index > 0:
-                    self.linePointGhost.draw_ghost(self.relative_mouse_pos())
-                    self.lineGhost.draw_ghost((linePointArray[self.line_index*2].coordinates[6], linePointArray[self.line_index*2].coordinates[7]), self.relative_mouse_pos())
-            case "arc":
-                if self.click_index > 1:
-                    self.arcPointGhost.draw_ghost(self.relative_mouse_pos())
-                    self.arcGhost.draw_ghost((arcPointArray[self.arc_index*3].coordinates[6], arcPointArray[self.arc_index*3].coordinates[7]), (arcPointArray[self.arc_index*3 + 1].coordinates[6], arcPointArray[self.arc_index*3 + 1].coordinates[7]), self.relative_mouse_pos())
-        
-        self.redrawEntities()
+        for w in range(0, self.point_index):
+            pointArray[w].check_hover(self.relative_mouse_pos())
+
+        self.ghostEvent()
 
 
 
@@ -121,6 +122,7 @@ class SketchWindow(QMainWindow):
                     if self.click_index >= 3:
                         self.instatiate_arc()
                         self.click_index = 0
+            self.organizeLinePoints()
 
         if event.button() == Qt.MouseButton.MiddleButton:
             self.mode = "pan"
@@ -184,6 +186,7 @@ class SketchWindow(QMainWindow):
 
         lineArray[self.line_index].draw()
         self.line_index += 1
+        self.checkIntersections()
 
     def instatiate_arc_point(self, point=[0,0]):
         arcPointArray.append(Point(self.maincanvas))
@@ -207,7 +210,7 @@ class SketchWindow(QMainWindow):
                                                arcPointArray[self.arc_index*3].coordinates[6], arcPointArray[self.arc_index*3].coordinates[7], arcPointArray[self.arc_index*3 + 1].coordinates[6], arcPointArray[self.arc_index*3 + 1].coordinates[7], arcPointArray[self.arc_index*3 + 2].coordinates[6], arcPointArray[self.arc_index*3 + 2].coordinates[7]    
         ]
         arcArray[self.arc_index].draw()
-        print(arcArray[self.arc_index].coordinates)
+        #print(arcArray[self.arc_index].coordinates)
         self.arc_index += 1
 
     def scale(self, scalar):
@@ -267,7 +270,7 @@ class SketchWindow(QMainWindow):
             arcArray[q].draw()
 
 
-        self.global_point.draw()
+        self.global_point.draw(Qt.GlobalColor.lightGray)
 
 
     def transform(self, xspeed, yspeed):
@@ -324,15 +327,33 @@ class SketchWindow(QMainWindow):
         self.global_point.coordinates[5] += yspeed
         self.global_point.coordinates[6] += xspeed
         self.global_point.coordinates[7] += yspeed
-        self.global_point.draw()
+        self.global_point.draw(Qt.GlobalColor.lightGray)
+
+    def ghostEvent(self):
+        match self.tool:
+            case "point":
+                self.pointGhost.draw_ghost(Qt.GlobalColor.green, self.relative_mouse_pos())
+            case "line":
+                self.linePointGhost.draw_ghost(Qt.GlobalColor.green, self.relative_mouse_pos())
+                if self.click_index > 0:
+                    self.lineGhost.draw_ghost((linePointArray[self.line_index*2].coordinates[6], linePointArray[self.line_index*2].coordinates[7]), self.relative_mouse_pos())
+            case "arc":
+                self.arcPointGhost.draw_ghost(Qt.GlobalColor.green, self.relative_mouse_pos())
+                if self.click_index > 1:
+                    self.arcGhost.draw_ghost((arcPointArray[self.arc_index*3].coordinates[6], arcPointArray[self.arc_index*3].coordinates[7]), (arcPointArray[self.arc_index*3 + 1].coordinates[6], arcPointArray[self.arc_index*3 + 1].coordinates[7]), self.relative_mouse_pos())
+            case "NAN":
+                pass
+        self.redrawEntities()
 
 
     def redrawEntities(self):
         for k in range(0, len(pointArray)):
             pointArray[k].draw()
+            pointArray[k].check_hover(self.relative_mouse_pos())
 
         for r in range(0, len(linePointArray)):
             linePointArray[r].draw()
+            #print(linePointArray[r].coordinates)
 
         for b in range(0, len(lineArray)):
             lineArray[b].draw()
@@ -343,16 +364,37 @@ class SketchWindow(QMainWindow):
         for d in range(0, len(arcArray)):
             arcArray[d].draw()
 
-        self.global_point.draw()
+        self.global_point.draw(Qt.GlobalColor.lightGray)
 
+    def checkIntersections(self):
+        for q in range(self.line_index):
+            a = (lineArray[q].coordinates[1] - lineArray[q].coordinates[3])/(lineArray[q].coordinates[0] - lineArray[q].coordinates[2])
+            for o in range(self.line_index):
+                if q != o:
+                    b = (lineArray[o].coordinates[1] - lineArray[o].coordinates[3])/(lineArray[o].coordinates[0] - lineArray[o].coordinates[2])
+                    g = lineArray[q].coordinates[1] - lineArray[o].coordinates[1]
+                    d = a*lineArray[q].coordinates[0] - b*lineArray[o].coordinates[0] - g
+                    x = d/(a-b)
+                    y = a*(x-lineArray[q].coordinates[0]) + lineArray[q].coordinates[1]
+                    self.instatiate_point([x, y])
+
+
+    def organizeLinePoints(self):
+        for t in range(0, self.line_point_index - 1):
+            if t % 2 == 0:
+                print([linePointArray[t].coordinates[0], linePointArray[t].coordinates[1]], [linePointArray[t + 1].coordinates[0], linePointArray[t + 1].coordinates[1]])
+        print("")
 
     def drawFrame(self):
         self.maincanvas.canvas.fill(Qt.GlobalColor.white)
         self.painter = QPainter(self.maincanvas.canvas)
+
         self.pen = QPen()
         self.pen.setColor(Qt.GlobalColor.darkGray)
         self.painter.setPen(self.pen)
+
         self.painter.drawLine(self.global_point.coordinates[6], 0, self.global_point.coordinates[6], 800)
         self.painter.drawLine(0, self.global_point.coordinates[7], 1000, self.global_point.coordinates[7])
+
         self.painter.end()
         self.maincanvas.label.setPixmap(self.maincanvas.canvas)
