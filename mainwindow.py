@@ -4,6 +4,7 @@ from PyQt6.QtGui import QCursor, QKeyEvent, QMouseEvent, QWheelEvent
 
 from maincanvas import MainCanvas
 from entities import *
+import math
 
 mouse_read = [0, 0]
 
@@ -12,6 +13,7 @@ linePointArray = []
 lineArray = []
 arcPointArray = []
 arcArray = []
+collisionArray = [[0, 0]]
 
 aArray = [[0, 0]]
 bArray = [[0, 0]]
@@ -185,8 +187,8 @@ class SketchWindow(QMainWindow):
                                                     linePointArray[(self.line_index*2)].coordinates[6], linePointArray[(self.line_index*2)].coordinates[7], linePointArray[(self.line_index*2)+1].coordinates[6], linePointArray[(self.line_index*2)+1].coordinates[7]]
 
         lineArray[self.line_index].draw()
-        self.line_index += 1
         self.checkIntersections()
+        self.line_index += 1
 
     def instatiate_arc_point(self, point=[0,0]):
         arcPointArray.append(Point(self.maincanvas))
@@ -367,17 +369,15 @@ class SketchWindow(QMainWindow):
         self.global_point.draw(Qt.GlobalColor.lightGray)
 
     def checkIntersections(self):
-        for q in range(self.line_index):
-            a = (lineArray[q].coordinates[1] - lineArray[q].coordinates[3])/(lineArray[q].coordinates[0] - lineArray[q].coordinates[2])
-            for o in range(self.line_index):
-                if q != o:
-                    b = (lineArray[o].coordinates[1] - lineArray[o].coordinates[3])/(lineArray[o].coordinates[0] - lineArray[o].coordinates[2])
-                    g = lineArray[q].coordinates[1] - lineArray[o].coordinates[1]
-                    d = a*lineArray[q].coordinates[0] - b*lineArray[o].coordinates[0] - g
-                    x = d/(a-b)
-                    y = a*(x-lineArray[q].coordinates[0]) + lineArray[q].coordinates[1]
-                    self.instatiate_point([x, y])
-
+        a = (lineArray[self.line_index].coordinates[1] - lineArray[self.line_index].coordinates[3])/(lineArray[self.line_index].coordinates[0] - lineArray[self.line_index].coordinates[2])
+        for o in range(self.line_index):
+            if self.line_index != o:
+                b = (lineArray[o].coordinates[1] - lineArray[o].coordinates[3])/(lineArray[o].coordinates[0] - lineArray[o].coordinates[2])
+                g = lineArray[self.line_index].coordinates[1] - lineArray[o].coordinates[1]
+                d = a*lineArray[self.line_index].coordinates[0] - b*lineArray[o].coordinates[0] - g
+                x = d/(a-b)
+                y = a*(x-lineArray[self.line_index].coordinates[0]) + lineArray[self.line_index].coordinates[1]
+                collisionArray.append([x, y])
 
     def organizeLinePoints(self):
         for t in range(0, self.line_point_index - 1):
