@@ -1,6 +1,6 @@
-from PyQt6.QtWidgets import QMainWindow
+from PyQt6.QtWidgets import QMainWindow, QToolBar, QStyleOptionToolBar
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QCursor, QKeyEvent, QMouseEvent, QWheelEvent
+from PyQt6.QtGui import QCursor, QKeyEvent, QMouseEvent, QWheelEvent, QAction
 
 from maincanvas import MainCanvas
 from entities import *
@@ -8,11 +8,14 @@ import math
 
 mouse_read = [0, 0]
 
+sketchArray = []
+
 pointArray = []
 linePointArray = []
 lineArray = []
 arcPointArray = []
 arcArray = []
+
 collisionArray = [[0, 0]]
 
 aArray = [[0, 0]]
@@ -24,8 +27,10 @@ class SketchWindow(QMainWindow):
         self.maincanvas = MainCanvas()
 
         self.setCentralWidget(self.maincanvas.label)
+
         self.tool = "line"
-        self.mode = 0
+        self.mode = "NAN"
+        self.viewer = "default"
 
         self.point_index = 0
         self.line_point_index = 0
@@ -39,7 +44,7 @@ class SketchWindow(QMainWindow):
         self.total_str = 0
 
         self.global_point = Point(self.maincanvas)
-        self.global_point.coordinates = [500, 400, 500, 400, 500, 400, 500, 400]
+        self.global_point.coordinates = [self.maincanvas.width/2, self.maincanvas.height/2, int(self.maincanvas.width/2), int(self.maincanvas.height/2), self.maincanvas.width/2, self.maincanvas.height/2, int(self.maincanvas.width/2), int(self.maincanvas.height/2)]
 
         self.pointGhost = Point(self.maincanvas)
         self.linePointGhost = Point(self.maincanvas)
@@ -55,8 +60,32 @@ class SketchWindow(QMainWindow):
         self.app = app
         self.setWindowTitle("CAD")
 
+        modebar = QToolBar("My main toolbar")
+        modebar.setFixedHeight(20)
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, modebar)
+        self.addToolBarBreak(Qt.ToolBarArea.TopToolBarArea)
+
+        toolbar = QToolBar("My main toolbar")
+        toolbar.setFixedHeight(60)
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, toolbar)
+
+        button_create_sketch = QAction("Create Sketch", self)
+        button_create_sketch.setStatusTip("Create a 2D sketch with this!!")
+        button_create_sketch.triggered.connect(self.createSketch)
+        toolbar.addAction(button_create_sketch)
+
         self.setMouseTracking(True)
         self.maincanvas.label.setPixmap(self.maincanvas.canvas)
+        self.setCentralWidget(self.maincanvas.label)
+
+        timeline = QToolBar("TVA Ahhhh moment")
+        timeline.setFixedHeight(20)
+        self.addToolBar(Qt.ToolBarArea.BottomToolBarArea, timeline)
+        
+    def createSketch(self, s):
+        self.viewer = "sketch"
+        self.drawFrame()
+        pass
 
     def keyPressEvent(self, event : QKeyEvent):
         #print(self.arc_point_index)
@@ -137,10 +166,11 @@ class SketchWindow(QMainWindow):
 
     def relative_mouse_pos(self):
         mouse = QCursor()
+        pixPoint = self.maincanvas.label.pos()
         windowPoint = self.pos()
         mousePoint = mouse.pos()
-        relativeMouseX = mousePoint.x() - windowPoint.x()
-        relativeMouseY = mousePoint.y() - windowPoint.y() - 32 #32 is the size of window bar
+        relativeMouseX = mousePoint.x() - windowPoint.x() - pixPoint.x()
+        relativeMouseY = mousePoint.y() - windowPoint.y() - pixPoint.y() - 32 #32 is the size of the windows bar
 
         return(relativeMouseX, relativeMouseY)
 
@@ -393,8 +423,9 @@ class SketchWindow(QMainWindow):
         self.pen.setColor(Qt.GlobalColor.darkGray)
         self.painter.setPen(self.pen)
 
-        self.painter.drawLine(self.global_point.coordinates[6], 0, self.global_point.coordinates[6], 800)
-        self.painter.drawLine(0, self.global_point.coordinates[7], 1000, self.global_point.coordinates[7])
+        if self.viewer == "sketch":
+            self.painter.drawLine(self.global_point.coordinates[6], 0, self.global_point.coordinates[6], 540)
+            self.painter.drawLine(0, self.global_point.coordinates[7], 960, self.global_point.coordinates[7])
 
         self.painter.end()
         self.maincanvas.label.setPixmap(self.maincanvas.canvas)

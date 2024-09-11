@@ -15,6 +15,11 @@ class Point(SketchEntity):
                             0, 0, #Basic Rounded
                             0, 0, #Transformed
                             0, 0] #Transformed rounded
+        
+        self.z_cooridnates = [0, #Basic
+                              0, #Basic Rounded
+                              0, #Transformed
+                              0] #Transformed Rounded
 
     def draw(self, color=Qt.GlobalColor.lightGray):
         self.painter = QPainter(self.maincanvas.canvas)
