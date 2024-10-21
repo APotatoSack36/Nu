@@ -20,6 +20,8 @@ class Point(SketchEntity):
                               0, #Basic Rounded
                               0, #Transformed
                               0] #Transformed Rounded
+        
+        self.relative_angle = 0
 
     def draw(self, color=Qt.GlobalColor.lightGray):
         self.painter = QPainter(self.maincanvas.canvas)
@@ -101,7 +103,7 @@ class Line(SketchEntity):
             #OLD? print("{}t + {},".format(1/(self.coordinates[0]-self.coordinates[2]), self.coordinates[0]), "{}t + {}".format(1/(self.coordinates[1]-self.coordinates[3]), self.coordinates[1]))
             pass
         except:
-            print("You tried to divide by zero you moron")
+            print("You tried to divide by zero you moron") im not a moron
 """
 class ThreePointArc(SketchEntity): #TBD
     def __init__(self, canvas):

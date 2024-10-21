@@ -1,6 +1,6 @@
-from PyQt6.QtWidgets import QMainWindow, QToolBar, QStyleOptionToolBar
+from PyQt6.QtWidgets import QMainWindow, QToolBar, QMenuBar, QMenu
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QCursor, QKeyEvent, QMouseEvent, QWheelEvent, QAction
+from PyQt6.QtGui import QCursor, QKeyEvent, QMouseEvent, QWheelEvent, QAction, QIcon
 
 from maincanvas import MainCanvas
 from entities import *
@@ -28,7 +28,7 @@ class SketchWindow(QMainWindow):
 
         self.setCentralWidget(self.maincanvas.label)
 
-        self.tool = "line"
+        self.tool = "NAN"
         self.mode = "NAN"
         self.viewer = "default"
 
@@ -42,9 +42,18 @@ class SketchWindow(QMainWindow):
         self.scaling_fac = 1.5
         self.zoom_str = 0
         self.total_str = 0
+        
+        self.roll = 0
 
         self.global_point = Point(self.maincanvas)
-        self.global_point.coordinates = [self.maincanvas.width/2, self.maincanvas.height/2, int(self.maincanvas.width/2), int(self.maincanvas.height/2), self.maincanvas.width/2, self.maincanvas.height/2, int(self.maincanvas.width/2), int(self.maincanvas.height/2)]
+        self.global_point.coordinates = [self.maincanvas.width/2, 
+                                         self.maincanvas.height/2, 
+                                         int(self.maincanvas.width/2), 
+                                         int(self.maincanvas.height/2), 
+                                         self.maincanvas.width/2, 
+                                         self.maincanvas.height/2, 
+                                         int(self.maincanvas.width/2), 
+                                         int(self.maincanvas.height/2)]
 
         self.pointGhost = Point(self.maincanvas)
         self.linePointGhost = Point(self.maincanvas)
@@ -55,8 +64,6 @@ class SketchWindow(QMainWindow):
         self.drawFrame()
         self.global_point.draw(Qt.GlobalColor.lightGray)
 
-        #print(pointArray, self.point_index)
-
         self.app = app
         self.setWindowTitle("CAD")
 
@@ -64,20 +71,22 @@ class SketchWindow(QMainWindow):
         modebar.setFixedHeight(20)
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, modebar)
         self.addToolBarBreak(Qt.ToolBarArea.TopToolBarArea)
+        modebar.setMovable(False)
 
         toolbar = QToolBar("My main toolbar")
         toolbar.setFixedHeight(60)
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, toolbar)
+        toolbar.setMovable(False)
 
         button_create_sketch = QAction("Create Sketch", self)
         button_create_sketch.setStatusTip("Create a 2D sketch with this!!")
         button_create_sketch.triggered.connect(self.createSketch)
         toolbar.addAction(button_create_sketch)
-
+        
         self.setMouseTracking(True)
         self.maincanvas.label.setPixmap(self.maincanvas.canvas)
         self.setCentralWidget(self.maincanvas.label)
-
+        
         timeline = QToolBar("TVA Ahhhh moment")
         timeline.setFixedHeight(20)
         self.addToolBar(Qt.ToolBarArea.BottomToolBarArea, timeline)
@@ -100,12 +109,13 @@ class SketchWindow(QMainWindow):
 
         self.click_index = 0
 
-        if event.key() == 76:   
-            self.tool = "line"
-        if event.key() == 80:
-            self.tool = "point"
-        if event.key() == 65:
-            self.tool = "arc"
+        if self.viewer == "sketch":
+            if event.key() == 76:   
+                self.tool = "line"
+            if event.key() == 80:
+                self.tool = "point"
+            if event.key() == 65:
+                self.tool = "arc"
         if event.key() == 16777216:
             self.tool = "NAN"
         if event.key() == 16777249:
@@ -132,6 +142,9 @@ class SketchWindow(QMainWindow):
         for w in range(0, self.point_index):
             pointArray[w].check_hover(self.relative_mouse_pos())
 
+        if self.mode == "rotate":
+            self.rotate((mouse_read[0] - last_relative_mouse_pos[0])*.01)
+
         self.ghostEvent()
 
 
@@ -153,15 +166,20 @@ class SketchWindow(QMainWindow):
                     if self.click_index >= 3:
                         self.instatiate_arc()
                         self.click_index = 0
-            self.organizeLinePoints()
-
         if event.button() == Qt.MouseButton.MiddleButton:
             self.mode = "pan"
         if event.button() == Qt.MouseButton.RightButton:
-            pass
+            self.mode = "rotate"
+
+
+        self.organizeLinePoints()
+
+
 
     def mouseReleaseEvent(self, event : QMouseEvent):
         if event.button() == Qt.MouseButton.MiddleButton:
+            self.mode = "NAN"
+        if event.button() == Qt.MouseButton.RightButton:
             self.mode = "NAN"
 
     def relative_mouse_pos(self):
@@ -193,6 +211,10 @@ class SketchWindow(QMainWindow):
                                                     point[1], 
                                                     int(point[0]), 
                                                     int(point[1])]
+        
+        pointArray[self.point_index].relative_angle = 180/3.14159 * (self.roll + math.asin((pointArray[self.point_index].coordinates[4] - self.global_point.coordinates[0])/
+                                                                                           (math.sqrt((pointArray[self.point_index].coordinates[4]- self.global_point.coordinates[0])**2 + (pointArray[self.point_index].coordinates[5]- self.global_point.coordinates[0])**2))))
+        #print(pointArray[self.point_index].relative_angle)
         pointArray[self.point_index].draw()
         self.point_index += 1
 
@@ -244,6 +266,21 @@ class SketchWindow(QMainWindow):
         arcArray[self.arc_index].draw()
         #print(arcArray[self.arc_index].coordinates)
         self.arc_index += 1
+
+    def rotate(self, theta):
+        self.drawFrame()
+        self.roll += theta
+        print(self.roll)
+        for r in range(0, len(pointArray)):
+            radius = math.sqrt((pointArray[r].coordinates[0] - self.global_point.coordinates[0])**2 + (pointArray[r].coordinates[1] - self.global_point.coordinates[1])**2)
+            pointArray[r].relative_angle += theta
+            #print(pointArray[r].relative_angle)
+            pointArray[r].coordinates[4] = math.sin(pointArray[r].relative_angle) * radius + self.global_point.coordinates[4]
+            pointArray[r].coordinates[5] = math.cos(pointArray[r].relative_angle) * radius + self.global_point.coordinates[5]
+            pointArray[r].coordinates[6] = int(pointArray[r].coordinates[4])
+            pointArray[r].coordinates[7] = int(pointArray[r].coordinates[5])
+            pointArray[r].draw()
+
 
     def scale(self, scalar):
         self.drawFrame()
@@ -402,6 +439,7 @@ class SketchWindow(QMainWindow):
         a = (lineArray[self.line_index].coordinates[1] - lineArray[self.line_index].coordinates[3])/(lineArray[self.line_index].coordinates[0] - lineArray[self.line_index].coordinates[2])
         for o in range(self.line_index):
             if self.line_index != o:
+                #Linear math :( imagine quadratic lol
                 b = (lineArray[o].coordinates[1] - lineArray[o].coordinates[3])/(lineArray[o].coordinates[0] - lineArray[o].coordinates[2])
                 g = lineArray[self.line_index].coordinates[1] - lineArray[o].coordinates[1]
                 d = a*lineArray[self.line_index].coordinates[0] - b*lineArray[o].coordinates[0] - g
@@ -412,8 +450,9 @@ class SketchWindow(QMainWindow):
     def organizeLinePoints(self):
         for t in range(0, self.line_point_index - 1):
             if t % 2 == 0:
-                print([linePointArray[t].coordinates[0], linePointArray[t].coordinates[1]], [linePointArray[t + 1].coordinates[0], linePointArray[t + 1].coordinates[1]])
-        print("")
+                pass
+                #print([linePointArray[t].coordinates[0], linePointArray[t].coordinates[1]], [linePointArray[t + 1].coordinates[0], linePointArray[t + 1].coordinates[1]])
+        #print("")
 
     def drawFrame(self):
         self.maincanvas.canvas.fill(Qt.GlobalColor.white)
